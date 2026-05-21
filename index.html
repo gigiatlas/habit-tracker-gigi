@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Habit Tracker">
+<meta name="theme-color" content="#6d28d9">
 <title>Habit Tracker</title>
 <style>
 /* ─── TOKENS ──────────────────────────────────────────────── */
@@ -995,6 +999,225 @@ body.shake { animation: shake .35s ease-in-out; }
   color: var(--muted); cursor: pointer; transition: all .15s;
 }
 .lang-btn.active { background: var(--accent-grad); color: #fff; }
+
+/* ─── MOBILE HEADER (hidden on desktop) ──────────────────── */
+.mobile-header { display: none; }
+.mobile-nav { display: none; }
+.mobile-more-sheet { display: none; }
+.mobile-more-overlay { display: none; }
+
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE — MOBILE (≤ 768px)
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ── Body & app layout ── */
+  body { overflow: hidden; font-size: 15px; }
+  .app {
+    flex-direction: column;
+    height: 100dvh;
+    height: -webkit-fill-available;
+  }
+
+  /* ── Hide desktop sidebar ── */
+  .sidebar { display: none; }
+
+  /* ── Mobile header ── */
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    padding-top: calc(12px + env(safe-area-inset-top));
+    background: var(--sb-bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  .mh-brand {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .mh-title {
+    font-size: 17px; font-weight: 700;
+    background: linear-gradient(95deg, #0066ff 0%, #6d28d9 45%, #c026d3 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .mh-date {
+    font-size: 12px; color: var(--muted);
+    text-align: center; flex: 1;
+  }
+  .mh-actions { display: flex; gap: 6px; }
+
+  /* ── Main content ── */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 16px calc(80px + env(safe-area-inset-bottom));
+  }
+
+  /* ── Stats strip: 2x2 ── */
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px; margin-bottom: 16px;
+  }
+  .stat { padding: 14px 16px; }
+  .stat .value { font-size: 24px; }
+
+  /* ── Habits grid: 1 column ── */
+  .habits { grid-template-columns: 1fr; gap: 8px; }
+
+  /* ── Add row ── */
+  .add-row { gap: 8px; }
+  .add-row input { font-size: 16px; } /* prevents zoom on iOS */
+
+  /* ── Sleep grid: stack ── */
+  .sleep-grid { grid-template-columns: 1fr; gap: 12px; }
+
+  /* ── Sleep stats: 2 cols ── */
+  .sleep-stats { grid-template-columns: repeat(2, 1fr); }
+
+  /* ── Journal row: stack ── */
+  .journal-row { flex-direction: column; gap: 12px; }
+
+  /* ── Ritual grid: stack ── */
+  .ritual-grid { grid-template-columns: 1fr; gap: 12px; }
+
+  /* ── Pomodoro: center & full ── */
+  .pomo-wrap { max-width: 100%; }
+  .pomo-circle { width: 220px; height: 220px; }
+  .pomo-time .big { font-size: 42px; }
+
+  /* ── Panels & sections ── */
+  .section-header { flex-wrap: wrap; gap: 8px; }
+  .quote-banner { padding: 14px 16px; }
+  .quote-banner .qb-text { font-size: 15px; }
+
+  /* ── Modals: bottom sheet ── */
+  .modal-bg {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .modal {
+    border-radius: 20px 20px 0 0;
+    max-height: 92dvh;
+    width: 100%;
+    max-width: 100% !important;
+    overflow-y: auto;
+    padding: 24px 20px calc(20px + env(safe-area-inset-bottom));
+    animation: slideUp .3s cubic-bezier(.32,1,.6,1);
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .modal h3 { font-size: 17px; margin-bottom: 16px; }
+
+  /* ── Filter bar ── */
+  .filter-bar { gap: 6px; margin-bottom: 12px; }
+  .filter-btn { padding: 6px 12px; font-size: 13px; }
+
+  /* ── Section titles ── */
+  h2 { font-size: 16px; }
+
+  /* ── Toast ── */
+  .toast { bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: auto; max-width: calc(100vw - 32px); }
+
+  /* ═══ BOTTOM NAV ══════════════════════════════════════════ */
+  .mobile-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--sb-bg);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 50;
+    box-shadow: 0 -4px 20px rgba(0,0,0,.08);
+  }
+  .mnav-btn {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 8px 4px 10px;
+    background: none; border: none;
+    color: var(--muted);
+    font-size: 10px; font-weight: 600;
+    letter-spacing: .02em;
+    transition: color .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mni { font-size: 22px; line-height: 1; }
+  .mnl { font-size: 10px; }
+  .mnav-btn.active { color: var(--accent); }
+  .mnav-btn.active .mni { transform: scale(1.1); }
+
+  /* ═══ MORE SHEET ══════════════════════════════════════════ */
+  .mobile-more-overlay {
+    display: block;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 60;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s;
+  }
+  .mobile-more-overlay.open { opacity: 1; pointer-events: all; }
+
+  .mobile-more-sheet {
+    display: block;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--sb-bg);
+    border-radius: 20px 20px 0 0;
+    padding: 12px 20px calc(20px + env(safe-area-inset-bottom));
+    z-index: 70;
+    transform: translateY(100%);
+    transition: transform .3s cubic-bezier(.32,1,.6,1);
+    box-shadow: 0 -8px 40px rgba(0,0,0,.15);
+  }
+  .mobile-more-sheet.open { transform: translateY(0); }
+
+  .mms-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+  .mms-tabs {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    margin-bottom: 16px;
+  }
+  .mms-item {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 14px 8px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; font-size: 11px; font-weight: 600;
+    color: var(--text); cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: all .15s;
+  }
+  .mms-item span:first-child { font-size: 24px; }
+  .mms-item:active { background: var(--sb-active-bg); border-color: var(--accent); }
+  .mms-item.active { background: var(--sb-active-bg); border-color: var(--accent); color: var(--accent); }
+
+  .mms-divider { height: 1px; background: var(--border); margin: 4px 0 16px; }
+
+  .mms-tools {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .mms-tool {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 16px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; font-size: 13px; font-weight: 600;
+    color: var(--text); cursor: pointer; flex: 1;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mms-lang {
+    display: flex; gap: 4px;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 3px;
+  }
+  .mms-lang .lang-btn { padding: 6px 12px; font-size: 13px; }
+}
 </style>
 </head>
 <body>
@@ -1053,6 +1276,18 @@ body.shake { animation: shake .35s ease-in-out; }
     </div>
     <input type="file" id="importInput" accept="application/json,.json" style="display:none"/>
   </aside>
+
+  <!-- ═══ MOBILE HEADER ════════════════════════════════════════ -->
+  <header class="mobile-header">
+    <div class="mh-brand">
+      <span style="font-size:24px;line-height:1;background:linear-gradient(95deg,#0066ff 0%,#6d28d9 45%,#c026d3 100%);-webkit-background-clip:text;background-clip:text;color:transparent;">🔥</span>
+      <span class="mh-title">Habit Tracker</span>
+    </div>
+    <div class="mh-date" id="mobileDate"></div>
+    <div class="mh-actions">
+      <button class="icon-btn" id="mThemeBtn">🌙</button>
+    </div>
+  </header>
 
   <!-- ═══ MAIN ════════════════════════════════════════════════ -->
   <main class="main">
@@ -1327,6 +1562,36 @@ body.shake { animation: shake .35s ease-in-out; }
     </div>
 
   </main>
+
+  <!-- ═══ MOBILE BOTTOM NAV ══════════════════════════════════ -->
+  <nav class="mobile-nav" id="mobileNav">
+    <button class="mnav-btn active" data-tab="habits"><span class="mni">🎯</span><span class="mnl" data-i18n="nav.habits">Habitudes</span></button>
+    <button class="mnav-btn" data-tab="journal"><span class="mni">📔</span><span class="mnl">Journal</span></button>
+    <button class="mnav-btn" data-tab="sleep"><span class="mni">💤</span><span class="mnl" data-i18n="nav.sleep">Sommeil</span></button>
+    <button class="mnav-btn" data-tab="goals"><span class="mni">🏆</span><span class="mnl" data-i18n="nav.goals">Objectifs</span></button>
+    <button class="mnav-btn" id="moreNavBtn"><span class="mni">⋯</span><span class="mnl" data-i18n="nav.more">Plus</span></button>
+  </nav>
+
+  <!-- ═══ MOBILE MORE SHEET ════════════════════════════════════ -->
+  <div class="mobile-more-overlay" id="moreOverlay"></div>
+  <div class="mobile-more-sheet" id="moreSheet">
+    <div class="mms-handle"></div>
+    <div class="mms-tabs">
+      <button class="mms-item" data-tab="pomodoro"><span>🍅</span><span>Pomodoro</span></button>
+      <button class="mms-item" data-tab="anti"><span>🚫</span><span>Anti-habits</span></button>
+      <button class="mms-item" data-tab="reading"><span>📚</span><span data-i18n="nav.reading">Lecture</span></button>
+      <button class="mms-item" data-tab="rituals"><span>🎵</span><span>Affirmations</span></button>
+    </div>
+    <div class="mms-divider"></div>
+    <div class="mms-tools">
+      <button class="mms-tool" id="mExportBtn"><span>💾</span><span data-i18n="export.btn">Exporter</span></button>
+      <button class="mms-tool" id="mImportBtn"><span>📥</span><span data-i18n="import.btn">Importer</span></button>
+      <div class="mms-lang">
+        <button class="lang-btn" data-lang="fr">FR</button>
+        <button class="lang-btn" data-lang="en">EN</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1550,6 +1815,9 @@ const TRANSLATIONS = {
     "nav.sleep": "Sommeil",
     "nav.reading": "Ma lecture",
     "nav.goals": "Objectifs",
+    "nav.more": "Plus",
+    "export.btn": "Exporter",
+    "import.btn": "Importer",
     "stat.today": "Aujourd'hui",
     "stat.globalStreak": "Streak global",
     "stat.bestStreak": "Meilleur streak",
@@ -1697,6 +1965,9 @@ const TRANSLATIONS = {
     "nav.sleep": "Sleep",
     "nav.reading": "Reading",
     "nav.goals": "Goals",
+    "nav.more": "More",
+    "export.btn": "Export",
+    "import.btn": "Import",
     "stat.today": "Today",
     "stat.globalStreak": "Global streak",
     "stat.bestStreak": "Best streak",
@@ -2206,6 +2477,8 @@ function render() {
   document.getElementById("date").textContent = new Date().toLocaleDateString(currentLang === "en" ? "en-GB" : "fr-FR", {
     weekday: "long", year: "numeric", month: "long", day: "numeric"
   });
+  const mobileDateEl = document.getElementById("mobileDate");
+  if (mobileDateEl) mobileDateEl.textContent = document.getElementById("date").textContent;
 
   refreshBadges();
 
@@ -4397,6 +4670,56 @@ document.querySelectorAll(".tab").forEach(t => {
     if (t.dataset.tab === "pomodoro") loadPomoSettings();
   });
 });
+
+// Mobile nav
+document.querySelectorAll(".mnav-btn[data-tab], .mms-item[data-tab]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const tab = btn.dataset.tab;
+    // activate view
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    const targetView = document.getElementById("view-" + tab);
+    if (targetView) targetView.classList.add("active");
+    // update desktop tabs too
+    document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
+    // update mobile nav active state
+    document.querySelectorAll(".mnav-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+    // render lazy views
+    if (tab === "anti") renderAntiView();
+    if (tab === "journal") renderJournalView();
+    if (tab === "goals") renderGoalsView();
+    if (tab === "reading") renderBooksView();
+    if (tab === "rituals") renderRitualsView();
+    if (tab === "pomodoro") loadPomoSettings();
+    // close more sheet if open
+    document.getElementById("moreSheet")?.classList.remove("open");
+    document.getElementById("moreOverlay")?.classList.remove("open");
+  });
+});
+
+// More button
+const moreNavBtn = document.getElementById("moreNavBtn");
+const moreSheet = document.getElementById("moreSheet");
+const moreOverlay = document.getElementById("moreOverlay");
+if (moreNavBtn && moreSheet && moreOverlay) {
+  moreNavBtn.addEventListener("click", () => {
+    moreSheet.classList.toggle("open");
+    moreOverlay.classList.toggle("open");
+  });
+  moreOverlay.addEventListener("click", () => {
+    moreSheet.classList.remove("open");
+    moreOverlay.classList.remove("open");
+  });
+}
+
+// Mobile theme btn
+const mThemeBtnEl = document.getElementById("mThemeBtn");
+if (mThemeBtnEl) mThemeBtnEl.addEventListener("click", () => document.getElementById("themeBtn")?.click());
+
+// Mobile export/import
+const mExportBtnEl = document.getElementById("mExportBtn");
+if (mExportBtnEl) mExportBtnEl.addEventListener("click", () => { exportData(); document.getElementById("moreSheet")?.classList.remove("open"); document.getElementById("moreOverlay")?.classList.remove("open"); });
+const mImportBtnEl = document.getElementById("mImportBtn");
+if (mImportBtnEl) mImportBtnEl.addEventListener("click", () => { document.getElementById("importInput")?.click(); document.getElementById("moreSheet")?.classList.remove("open"); document.getElementById("moreOverlay")?.classList.remove("open"); });
 
 /* Goals events */
 document.getElementById("addGoalBtn").addEventListener("click", addGoal);
