@@ -5004,6 +5004,23 @@ function setSyncStatus(status) {
 async function setupSync(token) {
   localStorage.setItem(SYNC_TOKEN_KEY, token.trim());
   localStorage.removeItem(SYNC_GIST_KEY);
+
+  // Search for an existing Habit Tracker gist before creating a new one
+  setSyncStatus("syncing");
+  try {
+    const gists = await gistRequest("GET", "/gists?per_page=100");
+    if (Array.isArray(gists)) {
+      const existing = gists.find(g => g.files && g.files[GIST_FILENAME]);
+      if (existing) {
+        localStorage.setItem(SYNC_GIST_KEY, existing.id);
+        await syncPull();
+        toast("☁️ Gist existant trouvé — données récupérées !", "good");
+        return;
+      }
+    }
+  } catch(e) { console.warn("[sync] search failed", e); }
+
+  // No existing gist found → create one
   await syncPush();
   toast("☁️ Sync activée !", "good");
 }
