@@ -1273,6 +1273,7 @@ body.shake { animation: shake .35s ease-in-out; }
       <button class="icon-btn" id="summaryBtn" title="Bilan hebdomadaire">📊</button>
       <button class="icon-btn" id="reminderBtn" title="Activer les rappels">🔔</button>
       <button class="icon-btn" id="themeBtn" title="Thème clair / sombre">🌙</button>
+      <button class="icon-btn" id="syncBtn" title="Synchroniser">☁️</button>
     </div>
     <input type="file" id="importInput" accept="application/json,.json" style="display:none"/>
   </aside>
@@ -1586,6 +1587,7 @@ body.shake { animation: shake .35s ease-in-out; }
     <div class="mms-tools">
       <button class="mms-tool" id="mExportBtn"><span>💾</span><span data-i18n="export.btn">Exporter</span></button>
       <button class="mms-tool" id="mImportBtn"><span>📥</span><span data-i18n="import.btn">Importer</span></button>
+      <button class="mms-tool" id="mSyncBtn"><span>☁️</span><span data-i18n="sync.btn">Sync</span></button>
       <div class="mms-lang">
         <button class="lang-btn" data-lang="fr">FR</button>
         <button class="lang-btn" data-lang="en">EN</button>
@@ -1595,6 +1597,23 @@ body.shake { animation: shake .35s ease-in-out; }
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- ── Modal: sync setup ── -->
+<div class="modal-bg" id="syncModal">
+  <div class="modal" style="max-width:420px">
+    <h3>☁️ <span data-i18n="sync.title">Synchronisation</span></h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px" data-i18n="sync.desc">Entrez votre token GitHub (scope: gist) pour synchroniser vos données entre appareils.</p>
+    <input type="password" id="syncTokenInput" placeholder="ghp_..." style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:14px;margin-bottom:16px;outline:none"/>
+    <div id="syncGistInfo" style="font-size:12px;color:var(--muted);margin-bottom:12px;display:none"></div>
+    <div class="modal-actions">
+      <button id="syncModalCancel" data-i18n="modal.cancel">Annuler</button>
+      <button class="primary" id="syncModalSave" data-i18n="sync.activate">Activer</button>
+    </div>
+    <div style="margin-top:12px;text-align:center">
+      <button id="syncPullBtn" style="background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;text-decoration:underline" data-i18n="sync.pullNow">Récupérer depuis le cloud</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── Modal: edit habit ── -->
 <div class="modal-bg" id="editModal">
@@ -1956,6 +1975,12 @@ const TRANSLATIONS = {
     "goals.empty": "Aucun objectif. Clique sur + Nouvel objectif.",
     "goals.addTask": "+ Tâche",
     "goals.progressLabel": "Progression",
+    "sync.btn": "Sync",
+    "sync.title": "Synchronisation",
+    "sync.desc": "Entrez votre token GitHub (scope: gist) pour synchroniser vos données entre appareils.",
+    "sync.activate": "Activer",
+    "sync.pullNow": "Récupérer depuis le cloud",
+    "sync.pulled": "Données synchronisées depuis le cloud",
   },
   en: {
     "nav.daily": "Daily",
@@ -2106,6 +2131,12 @@ const TRANSLATIONS = {
     "goals.empty": "No goals yet. Click + New goal.",
     "goals.addTask": "+ Task",
     "goals.progressLabel": "Progress",
+    "sync.btn": "Sync",
+    "sync.title": "Sync",
+    "sync.desc": "Enter your GitHub token (scope: gist) to sync your data across devices.",
+    "sync.activate": "Activate",
+    "sync.pullNow": "Pull from cloud",
+    "sync.pulled": "Data synced from cloud",
   }
 };
 
@@ -2295,7 +2326,12 @@ function load() {
     pomodoro: { work: 25, break: 5, long: 15, sessionsToday: 0, lastDate: "" },
   };
 }
-function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  // debounced cloud sync
+  clearTimeout(save._syncTimer);
+  save._syncTimer = setTimeout(syncPush, 2000);
+}
 
 /* ---------------- Streaks & stats (active-day aware) ---------------- */
 
@@ -4863,6 +4899,157 @@ document.querySelectorAll(".lang-btn").forEach(btn => {
   });
 });
 
+/* ── GIST SYNC ──────────────────────────────────────────── */
+const SYNC_TOKEN_KEY = "habitTracker_syncToken";
+const SYNC_GIST_KEY  = "habitTracker_gistId";
+const GIST_FILENAME  = "habit-tracker-data.json";
+
+async function gistRequest(method, path, body) {
+  const token = localStorage.getItem(SYNC_TOKEN_KEY);
+  if (!token) return null;
+  try {
+    const res = await fetch("https://api.github.com" + path, {
+      method,
+      headers: {
+        "Authorization": "token " + token,
+        "Content-Type": "application/json",
+        "Accept": "application/vnd.github.v3+json"
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if (!res.ok) throw new Error(res.status);
+    return await res.json();
+  } catch(e) {
+    console.warn("[sync] Gist request failed:", e);
+    return null;
+  }
+}
+
+async function syncPush() {
+  setSyncStatus("syncing");
+  const token = localStorage.getItem(SYNC_TOKEN_KEY);
+  if (!token) { setSyncStatus("off"); return; }
+
+  const payload = {
+    description: "Habit Tracker Data",
+    public: false,
+    files: {
+      [GIST_FILENAME]: {
+        content: JSON.stringify({ ...state, _syncedAt: Date.now() }, null, 2)
+      }
+    }
+  };
+
+  let gistId = localStorage.getItem(SYNC_GIST_KEY);
+  let result;
+  if (gistId) {
+    result = await gistRequest("PATCH", "/gists/" + gistId, payload);
+  } else {
+    result = await gistRequest("POST", "/gists", payload);
+    if (result?.id) localStorage.setItem(SYNC_GIST_KEY, result.id);
+  }
+  setSyncStatus(result ? "ok" : "error");
+}
+
+async function syncPull() {
+  setSyncStatus("syncing");
+  const gistId = localStorage.getItem(SYNC_GIST_KEY);
+  if (!gistId) { setSyncStatus("off"); return; }
+
+  const result = await gistRequest("GET", "/gists/" + gistId);
+  if (!result) { setSyncStatus("error"); return; }
+
+  try {
+    const remote = JSON.parse(result.files[GIST_FILENAME]?.content || "null");
+    if (!remote || !Array.isArray(remote.habits)) { setSyncStatus("error"); return; }
+
+    const localTime  = state._syncedAt || 0;
+    const remoteTime = remote._syncedAt || 0;
+
+    if (remoteTime > localTime) {
+      state = remote;
+      // run migrations
+      for (const h of state.habits) {
+        if (!h.notes) h.notes = {};
+        if (!h.activeDays) h.activeDays = [0,1,2,3,4,5,6];
+        if (h.category === undefined) h.category = "";
+        if (h.why === undefined) h.why = "";
+        if (!h.badges) h.badges = [];
+        if (!h.level) h.level = { enabled: false, baseValue: 5, increment: 1, threshold: 7, unit: "" };
+        if (h.fallback === undefined) h.fallback = "";
+        if (!h.emoji) h.emoji = pickEmoji(h.name);
+      }
+      if (!state.sleep) state.sleep = {};
+      if (!state.antiHabits) state.antiHabits = [];
+      save();
+      render();
+      renderAntiView();
+      toast("☁️ " + t("sync.pulled"), "good");
+    }
+    setSyncStatus("ok");
+  } catch(e) {
+    setSyncStatus("error");
+  }
+}
+
+function setSyncStatus(status) {
+  const btn = document.getElementById("syncBtn");
+  const mBtn = document.getElementById("mSyncBtn");
+  const icons = { off: "☁️", syncing: "⏳", ok: "✅", error: "❌" };
+  const icon = icons[status] || "☁️";
+  if (btn) { btn.textContent = icon; btn.title = "Sync: " + status; }
+  if (mBtn) { mBtn.querySelector("span:first-child").textContent = icon; }
+}
+
+async function setupSync(token) {
+  localStorage.setItem(SYNC_TOKEN_KEY, token.trim());
+  localStorage.removeItem(SYNC_GIST_KEY);
+  await syncPush();
+  toast("☁️ Sync activée !", "good");
+}
+
+// Sync button → open modal
+document.getElementById("syncBtn")?.addEventListener("click", openSyncModal);
+document.getElementById("mSyncBtn")?.addEventListener("click", () => {
+  openSyncModal();
+  document.getElementById("moreSheet")?.classList.remove("open");
+  document.getElementById("moreOverlay")?.classList.remove("open");
+});
+
+function openSyncModal() {
+  const token = localStorage.getItem(SYNC_TOKEN_KEY) || "";
+  const gistId = localStorage.getItem(SYNC_GIST_KEY) || "";
+  const input = document.getElementById("syncTokenInput");
+  const info = document.getElementById("syncGistInfo");
+  if (input) input.value = token;
+  if (info) {
+    if (gistId) {
+      info.style.display = "block";
+      info.textContent = "Gist ID: " + gistId;
+    } else {
+      info.style.display = "none";
+    }
+  }
+  document.getElementById("syncModal").style.display = "flex";
+}
+
+document.getElementById("syncModalCancel")?.addEventListener("click", () => {
+  document.getElementById("syncModal").style.display = "none";
+});
+document.getElementById("syncModal")?.addEventListener("click", e => {
+  if (e.target.id === "syncModal") document.getElementById("syncModal").style.display = "none";
+});
+document.getElementById("syncModalSave")?.addEventListener("click", async () => {
+  const token = document.getElementById("syncTokenInput")?.value?.trim();
+  if (!token) return;
+  document.getElementById("syncModal").style.display = "none";
+  await setupSync(token);
+});
+document.getElementById("syncPullBtn")?.addEventListener("click", async () => {
+  document.getElementById("syncModal").style.display = "none";
+  await syncPull();
+});
+
 /* ---------------- Init ---------------- */
 
 render();
@@ -4881,6 +5068,11 @@ if (_lastTab && document.querySelector(`.tab[data-tab="${_lastTab}"]`)) {
   if (_lastTab === "reading") renderBooksView();
   if (_lastTab === "rituals") renderRitualsView();
   if (_lastTab === "pomodoro") loadPomoSettings();
+}
+
+// Auto-pull on load if sync configured
+if (localStorage.getItem(SYNC_TOKEN_KEY) && localStorage.getItem(SYNC_GIST_KEY)) {
+  syncPull();
 }
 </script>
 </body>
